@@ -5,9 +5,7 @@ libs = ["lib"]
 
 remappings = [
     'forge-std/=lib/forge-std/src/',
-    'openzeppelin-contracts/=lib/openzeppelin-contracts/',
-    '@openzeppelin=lib/openzeppelin-contracts/',
-    'openzeppelin/=lib/openzeppelin-contracts/contracts/',
+    '@openzeppelin/=node_modules/@openzeppelin/',
     'superfluid-contracts/=lib/protocol-monorepo/packages/ethereum-contracts/contracts/',
     '@superfluid-finance/ethereum-contracts/=lib/protocol-monorepo/packages/ethereum-contracts',
     '@superfluid-finance/ethereum-contracts/=packages/ethereum-contracts/',
