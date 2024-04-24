@@ -1,6 +1,10 @@
 {
-  "name": "vesting-airdrop-test",
+  "name": "superfluid-merkle-airstream-contracts-demo",
   "type": "module",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

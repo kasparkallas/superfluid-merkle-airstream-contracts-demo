@@ -47,7 +47,7 @@ library MerkleProof {
                 computedHash = _efficientHash(proofElement, computedHash);
             }
         }
-        return computedHash;
+        return computedHash;    
     }
 
     function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {

@@ -4,8 +4,12 @@ pragma solidity =0.8.12;
 import "./interfaces/IERC20.sol";
 import "./MerkleProof.sol";
 import "./interfaces/IMerkleDistributor.sol";
+import "./interfaces/IVestingSchedulerV2.sol";
+import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 contract MerkleDistributor is IMerkleDistributor {
+    using SuperTokenV1Library for ISuperToken;
+
     address public immutable override token;
     bytes32 public immutable override merkleRoot;
 
@@ -13,6 +17,8 @@ contract MerkleDistributor is IMerkleDistributor {
     uint256 public immutable activationTimestamp;
     address public immutable airdropTreasury;
     bool public isActive;
+
+    IVestingSchedulerV2 public vestingScheduler;
 
     // This is a packed array of booleans.
     mapping(uint256 => uint256) private claimedBitMap;
@@ -26,14 +32,27 @@ contract MerkleDistributor is IMerkleDistributor {
     constructor(
         address token_,
         bytes32 merkleRoot_,
-        address _treasury
+        address _treasury,
+        IVestingSchedulerV2 vestingScheduler_
     ) {
         token = token_;
         merkleRoot = merkleRoot_;
+        vestingScheduler = vestingScheduler_;
 
         activationTimestamp = block.timestamp;
         isActive = true;
         airdropTreasury = _treasury;
+
+        // # ERC-20 allowance
+        ISuperToken(token_).approve(address(vestingScheduler_), type(uint256).max);
+
+        // # ACL allowance
+        // address flowOperator,
+        // bool allowCreate,
+        // bool allowUpdate,
+        // bool allowDelete,
+        // int96 flowRateAllowance
+        ISuperToken(token_).setFlowPermissions(address(vestingScheduler_), true, false, true, type(int96).max);
     }
 
     function isClaimed(uint256 index) public view override returns (bool) {
@@ -61,7 +80,10 @@ contract MerkleDistributor is IMerkleDistributor {
         require(!isClaimed(index), "MerkleDistributor: Drop already claimed.");
 
         // Verify the merkle proof.
-        bytes32 node = keccak256(abi.encodePacked(index, account, amount));
+        // OLD: bytes32 node = keccak256(abi.encodePacked(index, account, amount));
+        // Use double-hashing
+        bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(index, account, amount))));
+
         require(
             MerkleProof.verify(merkleProof, merkleRoot, node),
             "MerkleDistributor: Invalid proof."
@@ -69,10 +91,15 @@ contract MerkleDistributor is IMerkleDistributor {
 
         // Mark it claimed and send the token.
         _setClaimed(index);
-        require(
-            IERC20(token).transfer(account, amount),
-            "MerkleDistributor: Transfer failed."
-        );
+        // require(
+        //     IERC20(token).transfer(account, amount),
+        //     "MerkleDistributor: Transfer failed."
+        // );
+
+        // # Create and execute vesting schedule
+        vestingScheduler.createAndExecuteVestingScheduleFromAmountAndDuration(ISuperToken(token), account, amount, uint32(7 days));
+
+        // Do note that if something happens to the stream, this can't be re-triggered.
 
         emit Claimed(index, account, amount);
     }
