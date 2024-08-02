@@ -1,4 +1,14 @@
-## Foundry
+## Superfluid Merkle Airstream demo contract
+
+The following is a proof of concept smart contract _demo_ of how to achieve merkle tree "airstream" capability using the Superfluid Protocol along with the Superfluid VestingSchedulerV2 contract.
+
+1. A merkle tree is deployed with recipients and amounts.
+2. A recipient claims their amounts by providing the proof. A Superfluid flow/stream is created for during claiming using the Superfluid VestingSchedulerV2 contract. The vesting schedule will show up in the recipients Superfluid Dashboard view.
+3. An automation system (not included here) will finalize the vesting schedule when it's the right time defined by the vesting schedule, doing it through invoking VestingSchedulerV2, which only allows execution following the rules set by the vesting schedule.
+
+UI demo: https://superfluid-merkle-airdrop-demo.vercel.app/
+
+## Foundry (original auto-scaffolded readme)
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
@@ -63,4 +73,3 @@ $ cast <subcommand>
 $ forge --help
 $ anvil --help
 $ cast --help
-```
