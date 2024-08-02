@@ -43,16 +43,26 @@ contract MerkleDistributor is IMerkleDistributor {
         isActive = true;
         airdropTreasury = _treasury;
 
-        // # ERC-20 allowance
-        ISuperToken(token_).approve(address(vestingScheduler_), type(uint256).max);
-
         // # ACL allowance
-        // address flowOperator,
-        // bool allowCreate,
-        // bool allowUpdate,
-        // bool allowDelete,
-        // int96 flowRateAllowance
-        ISuperToken(token_).setFlowPermissions(address(vestingScheduler_), true, false, true, type(int96).max);
+        // "ACL" stands for "Access Control List" which is a permission system for flows (aka "streams"), built into the Superfluid Protocol.
+        // Read more about it here: https://docs.superfluid.finance/docs/protocol/advanced-topics/advanced-money-streaming/access-control-list
+        // What we're doing here is giving vesting scheduler the permission to create and delete flows on behalf of this contract.
+        // In other words, the vesting scheduler acts as an operator on behalf of this contract, following the rules in the scheduler contract.
+
+        // (address flowOperator, bool allowCreate, bool allowUpdate, bool allowDelete, int96 flowRateAllowance)
+        ISuperToken(token).setFlowPermissions(address(vestingScheduler_), true, false, true, type(int96).max);
+
+        // # ERC-20 allowance
+        // The ERC-20 allowance is needed by the vesting scheduler to do so-called compensation amount and remainder amount transfers.
+        // To clarify, the Superfluid flows are stored as integers, not fractions, and the flows keep flowing until they're actively deleted.
+        // In case of the vesting scheduler, the flows are deleted by off-chain automation system,
+        // and it can't be guaranteed to trigger at the perfect block.
+        // So in a nutshell, the solution is to delete the flow slightly before the expected end date,
+        // and use an ERC-20 transfer to compensate for the slightly early end and non-perfect divisibility of the integer flow rate.
+        ISuperToken(token).approve(address(vestingScheduler_), type(uint256).max);
+
+        // NOTE: We somewhat lazily give maximum allowances (for both ACL and token allowance), we could give less,
+        // but the functioning of this contract is so reliant and coupled to the vesting scheduler that it doesn't really matter.
     }
 
     function isClaimed(uint256 index) public view override returns (bool) {
@@ -79,9 +89,9 @@ contract MerkleDistributor is IMerkleDistributor {
     ) external override {
         require(!isClaimed(index), "MerkleDistributor: Drop already claimed.");
 
-        // Verify the merkle proof.
-        // OLD: bytes32 node = keccak256(abi.encodePacked(index, account, amount));
-        // Use double-hashing
+        // # Verify the merkle proof.
+        // This used to be: `bytes32 node = keccak256(abi.encodePacked(index, account, amount));`
+        // But I changed it to use double-hashing which is a slightly more modern and secure way of doing the proofing:
         bytes32 node = keccak256(bytes.concat(keccak256(abi.encode(index, account, amount))));
 
         require(
@@ -91,17 +101,21 @@ contract MerkleDistributor is IMerkleDistributor {
 
         // Mark it claimed and send the token.
         _setClaimed(index);
-        // require(
+
+        // This is a snippet of old code what happened here previously (now replaced with creating a Superfluid vesting schedule):
+        // `require(
         //     IERC20(token).transfer(account, amount),
         //     "MerkleDistributor: Transfer failed."
-        // );
+        // );`
 
-        // # Create and execute vesting schedule
-        vestingScheduler.createAndExecuteVestingScheduleFromAmountAndDuration(ISuperToken(token), account, amount, uint32(7 days));
-
-        // Do note that if something happens to the stream, this can't be re-triggered.
+        // # Create and execute the vesting schedule
+        ISuperToken superToken = ISuperToken(token); // For example: OPx
+        uint32 vestingScheduleDuration = uint32(7 days); // An arbitrary value chosen for the demo.
+        vestingScheduler.createAndExecuteVestingScheduleFromAmountAndDuration(superToken, account, amount, vestingScheduleDuration);
 
         emit Claimed(index, account, amount);
+
+        // NOTE: if something happens to the flow/stream, this can't be re-triggered.
     }
 
     /**

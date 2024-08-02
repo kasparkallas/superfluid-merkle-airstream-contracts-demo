@@ -10,6 +10,8 @@ import { IVestingSchedulerV2 } from "./interfaces/IVestingSchedulerV2.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+// NOTE: The source code is copy-pasted here for demo simplicity.
+
 contract VestingSchedulerV2 is IVestingSchedulerV2, SuperAppBase {
     using CFAv1Library for CFAv1Library.InitData;
     CFAv1Library.InitData public cfaV1;

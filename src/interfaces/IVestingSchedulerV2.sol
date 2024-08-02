@@ -5,6 +5,8 @@ import {
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
+// NOTE: The source code is copy-pasted here for demo simplicity.
+
 interface IVestingSchedulerV2 {
     error TimeWindowInvalid();
     error AccountInvalid();
